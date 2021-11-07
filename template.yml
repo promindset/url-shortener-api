@@ -18,8 +18,7 @@ Globals:
     # Environment:
     Environment:
       Variables:
-        # PRODUCT_TABLE: !Select [1, !Split ['/', !GetAtt URLsTable.Arn]]
-        SHORT_URL_TABLE: !Ref ShortUrlTable
+        SHORT_URL_TABLE: !Select [1, !Split ["/", !GetAtt ShortUrlTable.Arn]]
     Runtime: nodejs14.x
     MemorySize: 128
     Timeout: 100
@@ -35,15 +34,11 @@ Resources:
     Properties:
       TableName: !Sub ShortUrlTable-${Stage}
       AttributeDefinitions:
-        - AttributeName: PK
-          AttributeType: S
-        - AttributeName: SK
+        - AttributeName: urlHash
           AttributeType: S
       KeySchema:
-        - AttributeName: PK
+        - AttributeName: urlHash
           KeyType: HASH
-        - AttributeName: SK
-          KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
 
   #############################

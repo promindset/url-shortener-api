@@ -5,3 +5,6 @@ dist/
 
 # IDEs
 .vscode/
+
+# Sam deploy config
+samconfig.toml

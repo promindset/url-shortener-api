@@ -1,14 +1,17 @@
 import "source-map-support/register";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { retrieveShortUrl } from "../db/retrieveShortUrl";
 
 export const redirectURLhandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  console.log("redirecting shortened url");
+  // slice the hash from the http request (/abc => abc)
+  const urlHash = event.path.slice(1);
 
-  console.log("event path: ", event.path);
+  // retrieve item from dynamodb by hash
+  const shortUrlData = await retrieveShortUrl(urlHash);
 
   return {
     headers: {
-      location: "https://facebook.com"
+      location: shortUrlData?.redirectUrl
     },
     statusCode: 301,
     body: JSON.stringify({

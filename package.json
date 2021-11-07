@@ -4,6 +4,7 @@
   "description": "URL Shortener API",
   "private": true,
   "dependencies": {
+    "aws-sdk": "^2.1023.0",
     "source-map-support": "^0.5.19"
   },
   "devDependencies": {
@@ -21,6 +22,8 @@
     "build": "node_modules/typescript/bin/tsc",
     "watch": "node_modules/typescript/bin/tsc -w --preserveWatchOutput",
     "start-api": "sam local start-api --env-vars=env.json.sample 2>&1 | tr \"\r\" \"\n\"",
+    "deploy:dev": "sam deploy --config-env dev",
+    "deploy:prod": "sam deploy --config-env prod",
     "test": "jest"
   }
 }
