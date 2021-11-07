@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  URL Shortener
+
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    Description: deployment envrionment [dev | staging | prod]
+
+Globals:
+  Function:
+    # Layers:
+    #   - !Ref RuntimeDependenciesLayer
+    # Environment:
+    Environment:
+      Variables:
+        # PRODUCT_TABLE: !Select [1, !Split ['/', !GetAtt URLsTable.Arn]]
+        SHORT_URL_TABLE: !Ref ShortUrlTable
+    Runtime: nodejs14.x
+    MemorySize: 128
+    Timeout: 100
+
+# Resources declares the AWS resources that you want to include in the stack
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
+Resources:
+  #############################
+  # DynamoDB Table
+  #############################
+  ShortUrlTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ShortUrlTable-${Stage}
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  #############################
+  # Api Gateway
+  #############################
+  UrlShortenerApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub UrlShortenerApiGateway-${Stage}
+      StageName: !Ref Stage
+  #############################
+  # Generate short urls lambda
+  #############################
+  GenerateShortenedURLFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Policies:
+      DynamoDBWritePolicy:
+        TableName: !Ref ShortUrlTable
+    Properties:
+      Handler: dist/handlers/createShortenedURL.createURLhandler
+      Description: Lambda function to generate Redirect url hashes
+      FunctionName: !Sub url-shortener-generate--${Stage}
+      Policies:
+        DynamoDBWritePolicy:
+          TableName: !Ref ShortUrlTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: POST
+            RestApiId:
+              Ref: UrlShortenerApiGateway
+  #############################
+  # Redirect urls lambda
+  #############################
+  RedirectShortenedURLFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub url-shortener-redirect--${Stage}
+      Policies:
+        DynamoDBReadPolicy:
+          TableName: !Ref ShortUrlTable
+      Handler: dist/handlers/redirectShortenedURL.redirectURLhandler
+      Description: Lambda function to redirect shortened urls
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{shortenedURI}
+            Method: GET
+            RestApiId:
+              Ref: UrlShortenerApiGateway
+  #############################
+
+Outputs:
+  WebEndpoint:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${UrlShortenerApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"
